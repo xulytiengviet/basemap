@@ -1,0 +1,37 @@
+name: Verify Basemap SDK
+
+on:
+  pull_request:
+    paths:
+      - "sdk/**"
+      - "examples/embed/**"
+      - ".github/workflows/verify-sdk.yml"
+  push:
+    branches: [main]
+    paths:
+      - "sdk/**"
+      - "examples/embed/**"
+      - ".github/workflows/verify-sdk.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax check
+        run: |
+          node --check sdk/basemap.js
+          node --check sdk/basemap.esm.js
+      - name: Verify canonical constants
+        run: |
+          grep -q 'LongNgoBasemap' sdk/basemap.js
+          grep -q 'releases/latest/download/basemap.pmtiles' sdk/basemap.js
+          grep -q '5.13.0' sdk/basemap.js
+          grep -q '4.5.0' sdk/basemap.js
+          grep -q '@v1.2.0/sdk/basemap.min.js' examples/embed/index.html
