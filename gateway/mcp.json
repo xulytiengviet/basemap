@@ -1,0 +1,15 @@
+{
+  "name": "longngo-basemap",
+  "title": "Long Ngo Basemap MCP",
+  "version": "1.0.0",
+  "transport": "streamable-http",
+  "endpoint": "/mcp",
+  "developer": "Long Ngo",
+  "license": "MIT",
+  "tools": [
+    "get_basemap_metadata",
+    "lonlat_to_tile",
+    "get_tile_url",
+    "get_service_endpoints"
+  ]
+}
