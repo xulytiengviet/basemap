@@ -1,0 +1,58 @@
+openapi: 3.1.0
+info:
+  title: Long Ngo Basemap Open Gateway
+  version: 1.0.0
+  description: Open REST/CDN/XYZ gateway for basemap.pmtiles.
+  license:
+    name: MIT
+servers:
+  - url: https://YOUR-GATEWAY
+paths:
+  /healthz:
+    get:
+      summary: Health check
+      responses:
+        '200': { description: OK }
+  /api/v1/metadata:
+    get:
+      summary: PMTiles metadata, bounds, zooms and endpoints
+      responses:
+        '200': { description: Metadata }
+  /api/v1/lonlat-to-tile:
+    get:
+      summary: Convert WGS84 lon/lat to XYZ
+      parameters:
+        - { name: lon, in: query, required: true, schema: { type: number, minimum: -180, maximum: 180 } }
+        - { name: lat, in: query, required: true, schema: { type: number, minimum: -85.05112878, maximum: 85.05112878 } }
+        - { name: z, in: query, required: true, schema: { type: integer, minimum: 0, maximum: 22 } }
+      responses:
+        '200': { description: XYZ coordinate and public tile URL }
+  /tilejson.json:
+    get:
+      summary: TileJSON document
+      responses:
+        '200': { description: TileJSON }
+  /basemap.pmtiles:
+    get:
+      summary: PMTiles archive with HTTP Range support
+      responses:
+        '200': { description: Full archive }
+        '206': { description: Partial content }
+  /tiles/{z}/{x}/{y}.png:
+    get:
+      summary: Raster XYZ tile
+      parameters:
+        - { name: z, in: path, required: true, schema: { type: integer } }
+        - { name: x, in: path, required: true, schema: { type: integer } }
+        - { name: y, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: PNG tile
+          content:
+            image/png: {}
+        '404': { description: Tile not found }
+  /mcp:
+    post:
+      summary: MCP Streamable HTTP JSON-RPC endpoint
+      responses:
+        '200': { description: MCP response }
