@@ -1,59 +1,67 @@
 name: Build basemap.pmtiles
+
 on:
   workflow_dispatch:
     inputs:
       source_url:
-        description: "Direct URL to the source RAR (optional if source/basemap.rar exists)"
-        required: false
+        description: "Direct URL to source RAR"
+        required: true
         type: string
       publish_release:
-        description: "Publish basemap.pmtiles as a GitHub Release asset"
+        description: "Publish validated assets to a GitHub Release"
         required: true
         default: false
         type: boolean
       tag:
-        description: "Release tag when publish_release=true"
+        description: "Release tag"
         required: false
-        default: "basemap-v1"
+        default: "v1.1.0"
         type: string
+
 permissions:
   contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Install libarchive
-        run: sudo apt-get update && sudo apt-get install -y libarchive-tools
-      - name: Obtain source archive
+        run: sudo apt-get update && sudo apt-get install -y libarchive-tools libarchive-dev
+      - name: Download source
         env:
           SOURCE_URL: ${{ inputs.source_url }}
         run: |
           mkdir -p source dist
-          if [ -n "$SOURCE_URL" ]; then
-            curl -fL --retry 3 "$SOURCE_URL" -o source/basemap.rar
-          fi
-          test -f source/basemap.rar || { echo "Provide source_url or source/basemap.rar"; exit 2; }
-      - name: Build PMTiles
+          curl -fL --retry 3 "$SOURCE_URL" -o source/basemap.rar
+      - name: Build and inspect
         run: |
-          python scripts/build_pmtiles_from_rar.py source/basemap.rar dist/basemap.pmtiles \
+          python tools/build_from_rar.py source/basemap.rar dist/basemap.pmtiles \
             --name "Vietnam & Southeast Asia Raster Basemap" \
             --description "Raster XYZ basemap packaged as PMTiles v3"
-          python scripts/inspect_pmtiles.py dist/basemap.pmtiles > dist/basemap.info.json
-          sha256sum dist/basemap.pmtiles > dist/basemap.pmtiles.sha256
+          python tools/inspect.py dist/basemap.pmtiles > dist/basemap.info.json
+          sha256sum dist/basemap.pmtiles | sed 's#dist/basemap.pmtiles#basemap.pmtiles#' > dist/basemap.pmtiles.sha256
+      - name: Validate canonical payload
+        run: |
+          python - <<'PY'
+          import hashlib, json, pathlib, sys
+          p = pathlib.Path('dist/basemap.pmtiles')
+          m = json.loads(pathlib.Path('pmtiles/manifest.json').read_text())
+          h = hashlib.sha256(p.read_bytes()).hexdigest()
+          print('size=', p.stat().st_size, 'sha256=', h)
+          if p.stat().st_size != m['size_bytes'] or h != m['sha256']:
+              sys.exit('Built PMTiles does not match canonical manifest')
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: basemap-pmtiles
-          path: |
-            dist/basemap.pmtiles
-            dist/basemap.info.json
-            dist/basemap.pmtiles.sha256
+          path: dist/
           compression-level: 0
-      - name: Publish Release asset
+      - name: Publish release assets
         if: ${{ inputs.publish_release }}
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
         run: |
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "$TAG" --notes "Raster PMTiles basemap build"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "$TAG — Long Ngo Basemap" --notes-file docs/RELEASE_v1.1.0.md
           gh release upload "$TAG" dist/basemap.pmtiles dist/basemap.info.json dist/basemap.pmtiles.sha256 --clobber

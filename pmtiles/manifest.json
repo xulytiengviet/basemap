@@ -1,0 +1,23 @@
+{
+  "project": "Long Ngo Basemap",
+  "release_version": "1.1.0",
+  "dataset_version": "1.0.0",
+  "artifact": "basemap.pmtiles",
+  "format": "PMTiles v3",
+  "tile_format": "png",
+  "scheme": "xyz",
+  "minzoom": 3,
+  "maxzoom": 12,
+  "size_bytes": 117829388,
+  "sha256": "ff62a0549c722905ec30538fd4336bc93960e9a593c0eabe99600bc40ecbe77c",
+  "bounds": [91.93359375, -2.02106512, 126.03515625, 26.03704189],
+  "center": [108.984375, 12.00798838, 7],
+  "addressed_tiles_count": 171237,
+  "tile_entries_count": 30925,
+  "unique_tile_contents_count": 24123,
+  "release_asset_url": "https://github.com/xulytiengviet/basemap/releases/download/v1.1.0/basemap.pmtiles",
+  "latest_asset_url": "https://github.com/xulytiengviet/basemap/releases/latest/download/basemap.pmtiles",
+  "developer": "Long Ngo",
+  "code_license": "MIT",
+  "data_license": "See DATA_ATTRIBUTION.md"
+}

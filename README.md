@@ -1,111 +1,65 @@
-# basemap — XYZ raster → `basemap.pmtiles`
+# Long Ngo Basemap
 
-**Phát triển: Long Ngo · Mã nguồn: MIT**
+**PMTiles-first WebGIS basemap · Open Gateway · MIT code**  
+**Developer:** Long Ngo
 
-Repo này đóng gói cây tile raster chuẩn `z/x/y` thành **một file PMTiles v3** để dùng lâu dài cho WebGIS mà không cần tile server riêng, đồng thời cung cấp **Open Gateway** để mọi người khai thác qua CDN/HTTP Range, REST API, XYZ, TileJSON, OpenAPI và MCP cho AI/agent.
+This repository is organized around one canonical artifact: **`basemap.pmtiles`**. Build tools, validation, examples, CDN/API gateway and AI/MCP integrations all consume the same PMTiles archive.
 
-## Open Gateway: API / CDN / MCP / endpoint / port
+## Canonical basemap
 
-Mã gateway nằm trong [`gateway/`](gateway/) và có thể chạy bằng Cloudflare Workers.
+| Property | Value |
+|---|---|
+| Format | PMTiles v3, raster PNG, XYZ/Web Mercator |
+| Size | 117,829,388 bytes |
+| Zoom | 3–12 |
+| Addressed tiles | 171,237 |
+| Unique tile contents | 24,123 |
+| SHA-256 | `ff62a0549c722905ec30538fd4336bc93960e9a593c0eabe99600bc40ecbe77c` |
+| Dataset version | 1.0.0 |
+| Repository release line | 1.1.0 |
 
-Các endpoint sau xuất hiện trên cùng hostname sau khi deploy:
+Machine-readable details are in [`pmtiles/manifest.json`](pmtiles/manifest.json) and [`pmtiles/basemap.info.json`](pmtiles/basemap.info.json).
 
-```text
-GET  /                         service index
-GET  /healthz                  health check
-GET  /basemap.pmtiles          PMTiles v3 / HTTP Range / CDN
-GET  /cdn/basemap.pmtiles      CDN alias
-GET  /api/v1/metadata          PMTiles header + metadata + endpoints
-GET  /tilejson.json            TileJSON
-GET  /tiles/{z}/{x}/{y}.png    XYZ raster PNG
-GET  /api/v1/lonlat-to-tile    WGS84 lon/lat -> XYZ + tile URL
-GET  /openapi.json             OpenAPI 3.1
-GET  /.well-known/basemap.json service discovery
-POST /mcp                      MCP Streamable HTTP cho AI agent
-```
+## Public asset
 
-Port mặc định:
-
-- production HTTPS: **443**
-- local `wrangler dev`: **8787**
-
-MCP tools:
-
-- `get_basemap_metadata`
-- `lonlat_to_tile`
-- `get_tile_url`
-- `get_service_endpoints`
-
-Xem đầy đủ tại [`PUBLIC_ENDPOINTS.md`](PUBLIC_ENDPOINTS.md), [`gateway/openapi.yaml`](gateway/openapi.yaml) và [`gateway/mcp.json`](gateway/mcp.json).
-
-Chạy local:
-
-```bash
-cd gateway
-npm install
-npm run dev
-```
-
-Deploy:
-
-```bash
-cd gateway
-npm install
-npm run deploy
-```
-
-Workflow [`Deploy Basemap Open Gateway`](.github/workflows/deploy-gateway.yml) sẽ dry-run build và có thể deploy tự động khi repo có `CLOUDFLARE_API_TOKEN` và `CLOUDFLARE_ACCOUNT_ID`.
-
-## Bộ dữ liệu đã kiểm tra
-
-Archive đầu vào được cung cấp có **171.237 PNG tiles**, chuẩn **XYZ / Web Mercator**, zoom **3–12**. Phạm vi chi tiết ở z12 xấp xỉ:
-
-`91.93359375,-2.02106512,126.03515625,26.03704189`
-
-Bản build kiểm thử tạo `basemap.pmtiles` khoảng **117,8 MB**, `clustered=true`; 171.237 địa chỉ tile được deduplicate còn 24.123 nội dung PNG duy nhất.
-
-> `basemap.pmtiles` lớn hơn giới hạn file Git thông thường 100 MB, vì vậy không commit trực tiếp vào nhánh chính. Hãy dùng GitHub Release asset, Cloudflare R2/S3 hoặc static object storage có HTTP Range + CORS.
-
-## Build trực tiếp từ RAR
-
-Linux/Ubuntu cần `libarchive`:
-
-```bash
-sudo apt-get install libarchive-tools
-python scripts/build_pmtiles_from_rar.py input.rar dist/basemap.pmtiles \
-  --name "Vietnam & Southeast Asia Raster Basemap"
-python scripts/inspect_pmtiles.py dist/basemap.pmtiles
-sha256sum dist/basemap.pmtiles
-```
-
-Script đọc RAR theo stream và **không bung 171 nghìn file ra đĩa**. Tile được stage vào SQLite tạm, sắp theo PMTiles tile-id/Hilbert order, deduplicate SHA-256 rồi đóng gói clustered PMTiles.
-
-## Build từ thư mục XYZ đã giải nén
-
-```bash
-python scripts/build_pmtiles_from_xyz.py tiles dist/basemap.pmtiles
-```
-
-Cấu trúc:
+After the `v1.1.0` release is published, consumers should prefer the stable latest URL:
 
 ```text
-tiles/
-  3/6/3.png
-  ...
-  12/3240/1870.png
+https://github.com/xulytiengviet/basemap/releases/latest/download/basemap.pmtiles
 ```
 
-## GitHub Actions
+Pinned release URL:
 
-Vào **Actions → Build basemap.pmtiles → Run workflow**. Có thể nhập `source_url` trỏ trực tiếp tới file RAR. Workflow luôn tạo artifact; bật `publish_release=true` để đưa `basemap.pmtiles` vào GitHub Release.
+```text
+https://github.com/xulytiengviet/basemap/releases/download/v1.1.0/basemap.pmtiles
+```
 
-## MapLibre GL JS
+The PMTiles binary is a **Release asset**, not a normal Git-tracked file. This keeps the Git history small and makes HTTP Range delivery practical.
+
+## Repository layout
+
+```text
+basemap/
+├── pmtiles/                 canonical metadata + checksums
+├── tools/                   build, inspect, verify, release helpers
+├── gateway/                 CDN / XYZ / REST / TileJSON / OpenAPI / MCP
+├── examples/
+│   ├── maplibre/            direct PMTiles example
+│   └── leaflet/             XYZ-through-gateway example
+├── docs/                    architecture, endpoints, release notes
+├── .github/workflows/       build / verify / release / gateway deploy
+├── DATA_ATTRIBUTION.md
+├── CHANGELOG.md
+└── LICENSE
+```
+
+## Use directly with MapLibre
 
 ```html
 <script src="https://unpkg.com/maplibre-gl@5.13.0/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/pmtiles@4.5.0/dist/pmtiles.js"></script>
 <script>
-const protocol = new pmtiles.Protocol({metadata:true});
+const protocol = new pmtiles.Protocol({ metadata: true });
 maplibregl.addProtocol("pmtiles", protocol.tile);
 
 const map = new maplibregl.Map({
@@ -117,7 +71,7 @@ const map = new maplibregl.Map({
     sources: {
       basemap: {
         type: "raster",
-        url: "pmtiles://https://YOUR-HOST/basemap.pmtiles",
+        url: "pmtiles://https://github.com/xulytiengviet/basemap/releases/latest/download/basemap.pmtiles",
         tileSize: 256
       }
     },
@@ -127,35 +81,56 @@ const map = new maplibregl.Map({
 </script>
 ```
 
-Mở `web/index.html` để dùng demo; có thể truyền URL qua `?pmtiles=https://.../basemap.pmtiles`.
+## Build from source tiles
 
-## Kiến trúc khuyến nghị
+From an RAR containing `tiles/{z}/{x}/{y}.png`:
 
-```text
-RAR / tiles z/x/y
-      │
-      ▼
-build_pmtiles_from_rar.py
-      │  sort + dedup + clustered PMTiles v3
-      ▼
- basemap.pmtiles
-      │
-      ├── GitHub Release (nhỏ/gọn, demo)
-      ├── Cloudflare R2 / S3 (khuyến nghị production)
-      └── static server hỗ trợ HTTP Range + CORS
-                │
-                ▼
-          Open Gateway
-    CDN / REST / XYZ / MCP
-                │
-                ▼
- MapLibre / Leaflet / OpenLayers / AI agents
+```bash
+sudo apt-get install -y libarchive-tools libarchive-dev
+python tools/build_from_rar.py input.rar dist/basemap.pmtiles
+python tools/inspect.py dist/basemap.pmtiles
 ```
 
-PMTiles cho phép ứng dụng đọc trực tiếp một archive trên static/object storage bằng byte-range, không cần backend tile riêng.
+From an extracted XYZ directory:
 
-## Giấy phép
+```bash
+python tools/build_from_xyz.py tiles dist/basemap.pmtiles
+```
 
-Mã nguồn repo và gateway dùng **MIT License — Copyright (c) 2026 Long Ngo**.
+## Verify a public deployment
 
-**Dữ liệu raster không mặc nhiên mang MIT chỉ vì code là MIT.** Archive đầu vào không kèm metadata/license, vì vậy trước khi public rộng rãi `basemap.pmtiles` cần xác nhận nguồn, giấy phép và attribution trong [`DATA_ATTRIBUTION.md`](DATA_ATTRIBUTION.md).
+```bash
+PMTILES_URL=https://github.com/xulytiengviet/basemap/releases/latest/download/basemap.pmtiles \
+  bash tools/verify_public.sh
+```
+
+## Open Gateway
+
+`gateway/` exposes the same basemap through:
+
+```text
+GET  /basemap.pmtiles
+GET  /cdn/basemap.pmtiles
+GET  /tiles/{z}/{x}/{y}.png
+GET  /tilejson.json
+GET  /api/v1/metadata
+GET  /api/v1/lonlat-to-tile
+GET  /openapi.json
+GET  /.well-known/basemap.json
+POST /mcp
+```
+
+See [`docs/PUBLIC_ENDPOINTS.md`](docs/PUBLIC_ENDPOINTS.md) and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
+## Release policy
+
+- Git tracks **code + metadata**, not the 118 MB PMTiles binary.
+- Every public binary release must match `pmtiles/manifest.json` SHA-256 and byte size.
+- `latest/download/basemap.pmtiles` is the consumer-facing moving URL.
+- Version-pinned release URLs are recommended for reproducible systems.
+
+## License and attribution
+
+Source code is **MIT License — Copyright (c) 2026 Long Ngo**.
+
+The raster dataset is a separate work and does **not** automatically inherit the software MIT license. Its source, permission and required attribution must be documented in [`DATA_ATTRIBUTION.md`](DATA_ATTRIBUTION.md) before broad redistribution.
