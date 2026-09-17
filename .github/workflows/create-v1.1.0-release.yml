@@ -1,0 +1,32 @@
+name: Create v1.1.0 release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/create-v1.1.0-release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create release and publish metadata assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v1.1.0
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" \
+              --title "v1.1.0 — Long Ngo Basemap" \
+              --notes-file docs/RELEASE_v1.1.0.md
+          gh release upload "$TAG" \
+            pmtiles/basemap.info.json \
+            pmtiles/basemap.pmtiles.sha256 \
+            pmtiles/manifest.json \
+            --clobber
+          gh release view "$TAG"
