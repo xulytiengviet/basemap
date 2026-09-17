@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PMTiles Basemap Demo</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.13.0/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@5.13.0/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/pmtiles@4.5.0/dist/pmtiles.js"></script>
+<style>html,body,#map{height:100%;margin:0}#panel{position:absolute;z-index:2;top:10px;left:10px;right:10px;max-width:720px;background:#fff;padding:10px;border-radius:8px;font:14px system-ui;box-shadow:0 2px 12px #0003}input{width:72%}button{margin-left:6px}</style></head>
+<body><div id="map"></div><div id="panel"><b>Raster PMTiles basemap</b><br><input id="url"><button id="load">Nạp</button><span id="status"></span></div>
+<script>
+const qs=new URLSearchParams(location.search); const input=document.getElementById('url'); input.value=qs.get('pmtiles')||'./basemap.pmtiles';
+const protocol=new pmtiles.Protocol({metadata:true,errorOnMissingTile:false}); maplibregl.addProtocol('pmtiles',protocol.tile);
+let map;
+function load(){ if(map) map.remove(); const archive=input.value.trim(); history.replaceState(null,'','?pmtiles='+encodeURIComponent(archive)); document.getElementById('status').textContent=' đang nạp…';
+ map=new maplibregl.Map({container:'map',center:[108.984375,12.0079884],zoom:5,style:{version:8,sources:{base:{type:'raster',url:'pmtiles://'+archive,tileSize:256,attribution:'Nguồn dữ liệu: cần khai báo theo giấy phép của bộ tile gốc'}},layers:[{id:'base',type:'raster',source:'base'}]}});
+ map.addControl(new maplibregl.NavigationControl()); map.on('load',()=>document.getElementById('status').textContent=' ✓'); map.on('error',e=>{document.getElementById('status').textContent=' lỗi'; console.error(e.error||e);}); }
+document.getElementById('load').onclick=load; load();
+</script></body></html>
