@@ -22,18 +22,68 @@ jobs:
         working-directory: gateway
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: gateway/package.json
+
+      - name: Syntax check
+        run: |
+          node --check src/index.js
+          node --check src/webgis.js
+
       - name: Install dependencies
-        run: npm install
-      - name: Dry-run build
+        run: npm install --no-audit --no-fund
+
+      - name: Wrangler dry-run build
         run: npm run check
+
       - name: Deploy Cloudflare Worker
-        if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
-        run: npx wrangler deploy
-      - name: Deployment note
-        if: ${{ env.CLOUDFLARE_API_TOKEN == '' }}
-        run: echo "Build verified. Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repository secrets to enable automatic deployment."
+        id: deploy
+        if: ${{ env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: |
+          set -euo pipefail
+          npx wrangler deploy 2>&1 | tee /tmp/wrangler-deploy.log
+          url="$(grep -Eo 'https://[A-Za-z0-9._-]+\.workers\.dev' /tmp/wrangler-deploy.log | tail -1 || true)"
+          echo "gateway_url=$url" >> "$GITHUB_OUTPUT"
+          if [ -n "$url" ]; then
+            echo "Gateway URL: $url"
+          else
+            echo "Worker deployed; no workers.dev URL was parsed from Wrangler output (custom route may be in use)."
+          fi
+
+      - name: Smoke test deployed gateway
+        if: ${{ steps.deploy.outputs.gateway_url != '' }}
+        env:
+          GATEWAY_URL: ${{ steps.deploy.outputs.gateway_url }}
+        run: |
+          set -euo pipefail
+          base="${GATEWAY_URL%/}"
+          curl -fsSL --retry 4 --retry-delay 3 "$base/healthz"
+          curl -fsSL --retry 4 --retry-delay 3 "$base/api/v1/metadata" >/dev/null
+          curl -fsSL --retry 4 --retry-delay 3 "$base/tilejson.json" >/dev/null
+          curl -fsSL --retry 4 --retry-delay 3 "$base/openapi.json" >/dev/null
+          curl -fsSL --retry 4 --retry-delay 3 "$base/webgis" | grep -q "Long Ngo Basemap WebGIS"
+          echo "Gateway smoke tests passed: $base"
+
+      - name: Deployment not enabled
+        if: ${{ env.CLOUDFLARE_API_TOKEN == '' || env.CLOUDFLARE_ACCOUNT_ID == '' }}
+        run: |
+          echo "Gateway build verified, but automatic deployment is not enabled."
+          echo "Add repository Actions secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID, then run this workflow again."
+
+      - name: Job summary
+        if: always()
+        run: |
+          echo "## Long Ngo Basemap Open Gateway" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Source PMTiles: https://github.com/xulytiengviet/basemap/releases/latest/download/basemap.pmtiles" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "${{ steps.deploy.outputs.gateway_url }}" ]; then
+            base="${{ steps.deploy.outputs.gateway_url }}"
+            echo "- WebGIS: ${base}/webgis" >> "$GITHUB_STEP_SUMMARY"
+            echo "- XYZ: ${base}/tiles/{z}/{x}/{y}.png" >> "$GITHUB_STEP_SUMMARY"
+            echo "- TileJSON: ${base}/tilejson.json" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Metadata: ${base}/api/v1/metadata" >> "$GITHUB_STEP_SUMMARY"
+            echo "- PMTiles CDN: ${base}/basemap.pmtiles" >> "$GITHUB_STEP_SUMMARY"
+            echo "- OpenAPI: ${base}/openapi.json" >> "$GITHUB_STEP_SUMMARY"
+            echo "- MCP: ${base}/mcp" >> "$GITHUB_STEP_SUMMARY"
+          fi
