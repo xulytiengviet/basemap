@@ -1,0 +1,59 @@
+name: Build basemap.pmtiles
+on:
+  workflow_dispatch:
+    inputs:
+      source_url:
+        description: "Direct URL to the source RAR (optional if source/basemap.rar exists)"
+        required: false
+        type: string
+      publish_release:
+        description: "Publish basemap.pmtiles as a GitHub Release asset"
+        required: true
+        default: false
+        type: boolean
+      tag:
+        description: "Release tag when publish_release=true"
+        required: false
+        default: "basemap-v1"
+        type: string
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install libarchive
+        run: sudo apt-get update && sudo apt-get install -y libarchive-tools
+      - name: Obtain source archive
+        env:
+          SOURCE_URL: ${{ inputs.source_url }}
+        run: |
+          mkdir -p source dist
+          if [ -n "$SOURCE_URL" ]; then
+            curl -fL --retry 3 "$SOURCE_URL" -o source/basemap.rar
+          fi
+          test -f source/basemap.rar || { echo "Provide source_url or source/basemap.rar"; exit 2; }
+      - name: Build PMTiles
+        run: |
+          python scripts/build_pmtiles_from_rar.py source/basemap.rar dist/basemap.pmtiles \
+            --name "Vietnam & Southeast Asia Raster Basemap" \
+            --description "Raster XYZ basemap packaged as PMTiles v3"
+          python scripts/inspect_pmtiles.py dist/basemap.pmtiles > dist/basemap.info.json
+          sha256sum dist/basemap.pmtiles > dist/basemap.pmtiles.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: basemap-pmtiles
+          path: |
+            dist/basemap.pmtiles
+            dist/basemap.info.json
+            dist/basemap.pmtiles.sha256
+          compression-level: 0
+      - name: Publish Release asset
+        if: ${{ inputs.publish_release }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "$TAG" --notes "Raster PMTiles basemap build"
+          gh release upload "$TAG" dist/basemap.pmtiles dist/basemap.info.json dist/basemap.pmtiles.sha256 --clobber
