@@ -1,0 +1,22 @@
+{
+  "name": "longngo-basemap-open-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Open API/CDN/XYZ/MCP gateway for basemap.pmtiles",
+  "author": "Long Ngo",
+  "license": "MIT",
+  "scripts": {
+    "dev": "wrangler dev --port 8787",
+    "deploy": "wrangler deploy",
+    "check": "wrangler deploy --dry-run --outdir dist"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.0.0",
+    "pmtiles": "^4.4.1",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
