@@ -1,0 +1,89 @@
+name: Create v1.2.0 release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "sdk/**"
+      - "examples/embed/**"
+      - "docs/releases/v1.2.0.md"
+      - ".github/workflows/create-v1.2.0-release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download canonical PMTiles from v1.1.0
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          curl -fL --retry 5 --retry-delay 3 \
+            https://github.com/xulytiengviet/basemap/releases/download/v1.1.0/basemap.pmtiles \
+            -o dist/basemap.pmtiles
+          cp pmtiles/basemap.info.json dist/basemap.info.json
+          cp pmtiles/basemap.pmtiles.sha256 dist/basemap.pmtiles.sha256
+          cp pmtiles/manifest.json dist/manifest.json
+
+      - name: Verify canonical binary
+        run: |
+          set -euo pipefail
+          expected_size=117829388
+          expected_sha=ff62a0549c722905ec30538fd4336bc93960e9a593c0eabe99600bc40ecbe77c
+          actual_size="$(stat -c%s dist/basemap.pmtiles)"
+          actual_sha="$(sha256sum dist/basemap.pmtiles | awk '{print $1}')"
+          test "$actual_size" = "$expected_size"
+          test "$actual_sha" = "$expected_sha"
+          test "$(head -c 7 dist/basemap.pmtiles)" = "PMTiles"
+          echo "Canonical PMTiles verified: $actual_size bytes / $actual_sha"
+
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view v1.2.0 >/dev/null 2>&1; then
+            gh release edit v1.2.0 --title "v1.2.0 — Long Ngo Basemap CDN SDK" --notes-file docs/releases/v1.2.0.md
+          else
+            gh release create v1.2.0 --target main --title "v1.2.0 — Long Ngo Basemap CDN SDK" --notes-file docs/releases/v1.2.0.md
+          fi
+          gh release upload v1.2.0 \
+            dist/basemap.pmtiles \
+            dist/basemap.info.json \
+            dist/basemap.pmtiles.sha256 \
+            dist/manifest.json \
+            --clobber
+
+      - name: Verify public release asset
+        run: |
+          set -euo pipefail
+          url=https://github.com/xulytiengviet/basemap/releases/download/v1.2.0/basemap.pmtiles
+          curl -fsSL --retry 5 -H 'Range: bytes=0-126' "$url" -o /tmp/header.bin
+          test "$(head -c 7 /tmp/header.bin)" = "PMTiles"
+
+      - name: Warm jsDelivr CDN
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          for url in \
+            https://cdn.jsdelivr.net/gh/xulytiengviet/basemap@v1.2.0/sdk/basemap.js \
+            https://cdn.jsdelivr.net/gh/xulytiengviet/basemap@v1.2.0/sdk/basemap.min.js \
+            https://cdn.jsdelivr.net/gh/xulytiengviet/basemap@v1.2.0/sdk/basemap.esm.js
+          do
+            curl -fsSL --retry 6 --retry-delay 5 "$url" -o /dev/null
+          done
+
+      - name: Release summary
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          ## Long Ngo Basemap v1.2.0
+          - SDK: https://cdn.jsdelivr.net/gh/xulytiengviet/basemap@v1.2.0/sdk/basemap.min.js
+          - Source: https://cdn.jsdelivr.net/gh/xulytiengviet/basemap@v1.2.0/sdk/basemap.js
+          - ESM: https://cdn.jsdelivr.net/gh/xulytiengviet/basemap@v1.2.0/sdk/basemap.esm.js
+          - PMTiles: https://github.com/xulytiengviet/basemap/releases/latest/download/basemap.pmtiles
+          EOF
