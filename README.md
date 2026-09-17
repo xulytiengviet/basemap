@@ -1,6 +1,60 @@
 # basemap — XYZ raster → `basemap.pmtiles`
 
-Repo này đóng gói cây tile raster chuẩn `z/x/y` thành **một file PMTiles v3** để dùng lâu dài cho WebGIS mà không cần tile server riêng.
+**Phát triển: Long Ngo · Mã nguồn: MIT**
+
+Repo này đóng gói cây tile raster chuẩn `z/x/y` thành **một file PMTiles v3** để dùng lâu dài cho WebGIS mà không cần tile server riêng, đồng thời cung cấp **Open Gateway** để mọi người khai thác qua CDN/HTTP Range, REST API, XYZ, TileJSON, OpenAPI và MCP cho AI/agent.
+
+## Open Gateway: API / CDN / MCP / endpoint / port
+
+Mã gateway nằm trong [`gateway/`](gateway/) và có thể chạy bằng Cloudflare Workers.
+
+Các endpoint sau xuất hiện trên cùng hostname sau khi deploy:
+
+```text
+GET  /                         service index
+GET  /healthz                  health check
+GET  /basemap.pmtiles          PMTiles v3 / HTTP Range / CDN
+GET  /cdn/basemap.pmtiles      CDN alias
+GET  /api/v1/metadata          PMTiles header + metadata + endpoints
+GET  /tilejson.json            TileJSON
+GET  /tiles/{z}/{x}/{y}.png    XYZ raster PNG
+GET  /api/v1/lonlat-to-tile    WGS84 lon/lat -> XYZ + tile URL
+GET  /openapi.json             OpenAPI 3.1
+GET  /.well-known/basemap.json service discovery
+POST /mcp                      MCP Streamable HTTP cho AI agent
+```
+
+Port mặc định:
+
+- production HTTPS: **443**
+- local `wrangler dev`: **8787**
+
+MCP tools:
+
+- `get_basemap_metadata`
+- `lonlat_to_tile`
+- `get_tile_url`
+- `get_service_endpoints`
+
+Xem đầy đủ tại [`PUBLIC_ENDPOINTS.md`](PUBLIC_ENDPOINTS.md), [`gateway/openapi.yaml`](gateway/openapi.yaml) và [`gateway/mcp.json`](gateway/mcp.json).
+
+Chạy local:
+
+```bash
+cd gateway
+npm install
+npm run dev
+```
+
+Deploy:
+
+```bash
+cd gateway
+npm install
+npm run deploy
+```
+
+Workflow [`Deploy Basemap Open Gateway`](.github/workflows/deploy-gateway.yml) sẽ dry-run build và có thể deploy tự động khi repo có `CLOUDFLARE_API_TOKEN` và `CLOUDFLARE_ACCOUNT_ID`.
 
 ## Bộ dữ liệu đã kiểm tra
 
@@ -91,11 +145,17 @@ build_pmtiles_from_rar.py
       └── static server hỗ trợ HTTP Range + CORS
                 │
                 ▼
-          MapLibre / Leaflet / OpenLayers
+          Open Gateway
+    CDN / REST / XYZ / MCP
+                │
+                ▼
+ MapLibre / Leaflet / OpenLayers / AI agents
 ```
 
 PMTiles cho phép ứng dụng đọc trực tiếp một archive trên static/object storage bằng byte-range, không cần backend tile riêng.
 
-## Quyền dữ liệu
+## Giấy phép
 
-Mã nguồn repo dùng MIT. **Dữ liệu raster không mặc nhiên mang MIT**. Archive đầu vào không kèm metadata/license, vì vậy trước khi public `basemap.pmtiles` cần điền nguồn, giấy phép và attribution trong [`DATA_ATTRIBUTION.md`](DATA_ATTRIBUTION.md).
+Mã nguồn repo và gateway dùng **MIT License — Copyright (c) 2026 Long Ngo**.
+
+**Dữ liệu raster không mặc nhiên mang MIT chỉ vì code là MIT.** Archive đầu vào không kèm metadata/license, vì vậy trước khi public rộng rãi `basemap.pmtiles` cần xác nhận nguồn, giấy phép và attribution trong [`DATA_ATTRIBUTION.md`](DATA_ATTRIBUTION.md).
