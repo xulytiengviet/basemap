@@ -20,6 +20,18 @@ Expected SHA-256 for `basemap.pmtiles`:
 
 `ff62a0549c722905ec30538fd4336bc93960e9a593c0eabe99600bc40ecbe77c`
 
+### Windows: publish with one command
+
+The repository includes `scripts/publish-release.ps1`.
+
+Place the three assets under `dist/`, authenticate GitHub CLI once with `gh auth login`, then run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/publish-release.ps1
+```
+
+The script uploads all three assets to `v1.0.0` with `--clobber`, verifies the release, and prints the public PMTiles URL.
+
 After publishing, the stable latest URL must resolve:
 
 `https://github.com/xulytiengviet/basemap/releases/latest/download/basemap.pmtiles`
