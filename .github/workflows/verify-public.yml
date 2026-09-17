@@ -9,7 +9,7 @@ on:
         default: "https://github.com/xulytiengviet/basemap/releases/latest/download/basemap.pmtiles"
         type: string
       gateway_url:
-        description: "Optional deployed gateway base URL, e.g. https://basemap-longngo.workers.dev"
+        description: "Optional deployed gateway URL"
         required: false
         type: string
   schedule:
@@ -23,8 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify PMTiles / HTTP Range / gateway
+      - name: Verify PMTiles and gateway
         env:
           PMTILES_URL: ${{ inputs.pmtiles_url || 'https://github.com/xulytiengviet/basemap/releases/latest/download/basemap.pmtiles' }}
           GATEWAY_URL: ${{ inputs.gateway_url }}
-        run: bash scripts/check_public_basemap.sh
+        run: bash tools/verify_public.sh
