@@ -1,0 +1,9 @@
+*.rar
+*.zip
+*.7z
+tiles/
+source/
+dist/*.pmtiles
+dist/*.sqlite
+__pycache__/
+*.pyc
