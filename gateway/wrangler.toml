@@ -1,0 +1,12 @@
+name = "longngo-basemap-gateway"
+main = "src/index.js"
+compatibility_date = "2026-09-17"
+
+[vars]
+PMTILES_URL = "https://github.com/xulytiengviet/basemap/releases/latest/download/basemap.pmtiles"
+SERVICE_NAME = "Long Ngo Basemap Open Gateway"
+AUTHOR = "Long Ngo"
+LICENSE = "MIT"
+# Comma-separated browser origins allowed to POST to /mcp.
+# Server-to-server MCP clients normally omit Origin and remain allowed.
+MCP_ALLOWED_ORIGINS = "https://chatgpt.com,https://claude.ai"
